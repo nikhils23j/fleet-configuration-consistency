@@ -1,0 +1,25 @@
+{
+  "environment": {
+    "python": "3.10.8",
+    "system": "macOS-27.2-arm64-arm-64bit"
+  },
+  "workload": {
+    "logical_nodes": 500,
+    "fault_runs": 100,
+    "drift_trials": 20
+  },
+  "fault_modes": {
+    "reject": 34,
+    "corrupt": 33,
+    "timeout": 33
+  },
+  "aborted_fault_runs": 100,
+  "successful_clean_rollout": true,
+  "mixed_served_version_samples": 0,
+  "naive_sequential_rollout_mixed_samples": 499,
+  "drift_detected_trials": 20,
+  "drift_detection_ms": {
+    "max": 14.85,
+    "median": 11.74
+  }
+}
