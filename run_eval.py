@@ -1,6 +1,6 @@
 """Full evaluation.  Every number in README.md comes from the results.json this writes.
 
-    python3 run_eval.py                 # full run (~6-8 min on an 8-core M2)
+    python3 run_eval.py                 # full run (202 s recorded on an 8-core M2)
     python3 run_eval.py --quick         # small smoke version (~1 min)
 """
 from __future__ import annotations

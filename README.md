@@ -2,44 +2,106 @@
 
 *What actually happens when half your fleet gets the new config and the other half doesn't?*
 
-That question is where this started. If a request fans out to five servers and two of them
-have `timeout_ms=200` while three still have `timeout_ms=250`, nothing crashes. You just get
-quietly inconsistent answers. A rolling deploy makes this happen on every single rollout, and
-a failed rollout can leave the fleet stuck that way.
+A small two-phase config rollout protocol (epochs, leases, fencing tokens, version-pinned reads),
+run against thousands of seeded fault schedules on a deterministic simulator, with an invariant
+checker that I then tried to fool by breaking my own code on purpose. Stdlib Python only.
 
-So I tried to build the thing properly. I wrote a small two-phase config rollout protocol with
-epochs, leases and fencing tokens. I ran it on a deterministic simulator and threw thousands of
-seeded fault schedules at it, with an invariant checker reading every recorded history. Then I
-broke my own code on purpose to check whether the checker would notice. Stdlib Python only.
-I built it with AI pair-programming help (Claude). I wrote and reviewed the design, the tests
-and every number here, and re-ran everything before writing it down.
+### TL;DR
+
+- **0 of 55,015** client reads saw mixed configs with the pinned protocol (500 simulated nodes,
+  500 seeded fault schedules). On the *same* schedules, rolling push mixed **17,856 / 111,419**
+  reads and canary push **22,152 / 91,665**.
+- **0 / 500** pinned runs broke any invariant, vs **500 / 500** for both baselines. Another
+  **6,000** schedules on 50 nodes across three fault profiles also gave **0** violations.
+- Removing one safety layer at a time, the checker caught **5 of 6** mutations (e.g.
+  `commit_on_majority` in **86 / 900** runs). It caught the missing fence in only **1 / 900**, and
+  `skip_hash_check` in **0 / 900**. Both are explained below.
+- The same protocol classes also ran over **real localhost TCP**: **0 / 40** fault runs with a
+  violation and **0 of 4,602** reads mixed.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    store[("store: lease + fencing token,<br/>epoch counter, write-once decisions<br/>(assumed reliable, think etcd)")]
+    coord["coord (leader)"]
+    coordb["coordb (hot standby)"]
+    router["router<br/>pins every request to ONE epoch"]
+    nodes["n0 ... n499 node agents<br/>active epoch + staged epochs<br/>SHA-256 check on stage AND serve"]
+    client(["client: 5-node fan-out read every 10 ms"])
+
+    coord -- "acquire / renew / alloc / decide (token)" --> store
+    coordb -. "tries to take the lease" .-> store
+    coord -- "PREPARE / COMMIT (token)" --> nodes
+    router -- "poll committed epoch" --> store
+    nodes -- "poll every 200 ms (anti-entropy, drift repair)" --> store
+    client --> router
+    router -- "read(epoch = E)" --> nodes
+```
+
+## What I built
+
+- **A two-phase rollout protocol** (`fleetcc/protocol.py`). Store, Node, Router and Coordinator
+  are I/O-free state machines (`on_message` / `on_timer`), so the *same classes* run in the
+  simulator and over real sockets.
+- **Leases with fencing tokens** and a hot-standby coordinator that takes over when the lease
+  lapses.
+- **Version-pinned reads.** The router stamps every request with one epoch; a node that
+  doesn't have that epoch says `EPOCH_MISSING` instead of guessing.
+- **SHA-256 everywhere.** Manifests are re-hashed before staging *and* before serving, so bit rot
+  turns into a `CORRUPT` error, not a wrong answer.
+- **Anti-entropy.** Nodes poll the store every 200 ms to catch up on missed COMMITs and repair
+  drifted or rotted configs.
+- **Two baselines** (`fleetcc/baseline.py`): a rolling push (10% of the fleet every 20 ms) and a
+  canary push (5% canary, 200 ms bake).
+- **A deterministic discrete-event simulator** (`fleetcc/sim.py`) with crashes, pauses,
+  VM-style suspends, clock jumps, partitions, lossy links, slow nodes, corruption in transit and
+  bit rot, all from a seed.
+- **An invariant checker** (`fleetcc/checker.py`) that reads the full event history of each run.
+- **Mutation flags + a delta-debugging shrinker** (`fleetcc/chaos.py`) that turn a failing
+  schedule into a tiny replayable repro (`repros/`).
+- **A real-socket mode** (`fleetcc/net.py`): every actor is an asyncio TCP server on
+  127.0.0.1 with node state in JSON files.
 
 ## How it works
 
-```
-                    +-------------------------------+
-                    |  store  (lease + decision log) |   <- assumed reliable (think etcd)
-                    |  token, committed epoch,       |
-                    |  write-once commit/abort       |
-                    +---+------------+----------+---+
-        acquire/renew   |            | poll     | poll (anti-entropy, drift repair)
-        alloc/decide    |            |          |
-   +--------------+     |     +------+-----+    |
-   | coord (lease)|-----+     |   router   |    |
-   | coordb (hot  |           | pins every |    |
-   |  standby)    |           | request to |    |
-   +------+-------+           | ONE epoch  |    |
-          | PREPARE / COMMIT  +------+-----+    |
-          | (with fencing     read(epoch=E)     |
-          |  token)                  |          |
-   +------v--------------------------v----------v-----+
-   |  n0   n1   n2   ...   n499    (node agents)      |
-   |  each keeps: active epoch + staged epoch(s),     |
-   |  verifies SHA-256 before staging AND serving     |
-   +--------------------------------------------------+
+The question that started this: if a request fans out to five servers and two of them have
+`timeout_ms=200` while three still have `timeout_ms=250`, nothing crashes. You just get quietly
+inconsistent answers. A rolling deploy makes this happen on every single rollout, and a failed
+rollout can leave the fleet stuck that way. So the protocol never lets the router point at an
+epoch until *every* node has it staged.
+
+```mermaid
+sequenceDiagram
+    participant C as coord (leader)
+    participant S as store
+    participant N as nodes (all N)
+    participant R as router
+    participant B as coordb (standby)
+
+    C->>S: acquire lease
+    S-->>C: granted, fencing token = 1
+    C->>S: alloc(manifest, token 1)
+    S-->>C: epoch E
+    C->>N: PREPARE(E, manifest, sha256, token 1)
+    Note over N: re-hash manifest, reject old tokens,<br/>stage durably, active config unchanged
+    N-->>C: PREPARED (from ALL nodes)
+    C->>S: decide(E, commit, token 1)
+    Note over S: write-once, only from the current token,<br/>commit for an epoch at or below current becomes abort
+    R->>S: poll committed epoch
+    S-->>R: committed = E
+    Note over R: from now on every read is pinned to E
+    C->>N: COMMIT(E)
+    Note over N: staged copy can already serve E,<br/>nodes that missed COMMIT catch up by polling
+
+    Note over C: frozen by a VM suspend, its clock stops too
+    B->>S: acquire lease (old one expired)
+    S-->>B: granted, fencing token = 2
+    C->>S: decide(E2, commit, token 1)
+    S-->>C: fenced (token 1 is stale)
 ```
 
-A rollout of one config change goes like this:
+A rollout of one config change, step by step:
 
 1. **Lease.** The coordinator gets a lease from the store, which comes with a fencing token
    (1, 2, 3, ...). A hot-standby coordinator keeps trying to take it over.
@@ -65,20 +127,11 @@ A rollout of one config change goes like this:
 content as epoch 3. Epoch numbers never go down, so "rollback" can't be confused with "a stale
 message about an old epoch".
 
-### The code
+**Why all nodes and not a majority?** The router can send a request to *any* node, so every node
+has to be able to serve the new epoch. The `commit_on_majority` mutation below shows what
+happens otherwise.
 
-| file | what |
-|---|---|
-| `fleetcc/protocol.py` | Store, Node, Router and Coordinator as I/O-free state machines (`on_message` / `on_timer`) |
-| `fleetcc/baseline.py` | rolling ("naive") push and canary push, for comparison |
-| `fleetcc/sim.py` | deterministic discrete-event simulator: virtual clock, seeded network, crashes, pauses |
-| `fleetcc/net.py` | the same actors as real asyncio TCP servers on 127.0.0.1, with node state in JSON files |
-| `fleetcc/faults.py` | seeded fault schedules plus the per-message network model |
-| `fleetcc/checker.py` | invariant checker over the recorded history |
-| `fleetcc/chaos.py` | runs schedules in parallel; delta-debugging shrinker |
-| `run_eval.py` | the full evaluation that writes `results.json` |
-
-Because the protocol does no I/O itself, the *same classes* run on the simulator and on real
+Because the protocol does no I/O itself, the same classes run on the simulator and on real
 sockets. I took this idea from FoundationDB- and TigerBeetle-style simulation testing, at toy
 scale.
 
@@ -124,13 +177,21 @@ replay.
 ## Results
 
 All numbers come from one run of `python3 run_eval.py` on an Apple M2 Mac (8 cores,
-Python 3.10.8). That run took 202 s. Raw output is in `results.json`.
+Python 3.10.8). That run took 202.3 s. Raw output is in [`results.json`](results.json), and every
+chart below is drawn from that file by [`scripts/make_figures.py`](scripts/make_figures.py).
 
 Each simulated run does two config changes (rollout, then rollback) while the router sends a
 5-node fan-out read every 10 ms. Times are **virtual** milliseconds in the simulator and
 wall-clock milliseconds on real sockets.
 
-### 500 simulated nodes, 500 seeded fault schedules (seeds 0-499, same schedules for every mode)
+### Mixed reads: pinned vs rolling vs canary
+
+![Per-run share of mixed-config reads for pinned, rolling and canary rollouts, with and without faults](docs/img/mixed_reads.png)
+
+Without any faults, rolling push mixed 528 / 1,137 reads (46.44%) and canary 724 / 1,954
+(37.05%), while pinned mixed 0 / 443. That gap is just what a rolling deploy *is*, not a fault.
+
+### 500 simulated nodes, 500 seeded fault schedules (seeds 0..499, same schedules for every mode)
 
 | | pinned 2-phase (this) | rolling push | canary push |
 |---|---|---|---|
@@ -138,14 +199,16 @@ wall-clock milliseconds on real sockets.
 | client reads that saw mixed configs | **0 / 55,015** | 17,856 / 111,419 | 22,152 / 91,665 |
 | per-run share of mixed reads, median (p95) | 0% | 23.7% (64.5%) | 28.0% (52.7%) |
 | runs that never converged (bit rot, no repair) | 0 | 38 | 14 |
-| time to converge after rollout start, p50 / p99 / max | 1114 / 1723 / 1820 ms | 1218 / 1819 / 1890 ms\* | 1480 / 2155 / 2475 ms\* |
-| time to converge after the last fault ends, p50 / p99 / max | 2.8 / 223 / 355 ms | 4.4 / 555 / 575 ms\* | 332 / 985 / 1015 ms\* |
+| time to converge after rollout start, p50 / p99 / max | 1114.4 / 1723.0 / 1819.5 ms | 1217.5 / 1818.9 / 1890.0 ms\* | 1480.0 / 2155.0 / 2475.0 ms\* |
+| time to converge after the last fault ends, p50 / p99 / max | 2.8 / 223.3 / 354.9 ms | 4.4 / 554.5 / 574.5 ms\* | 331.9 / 984.8 / 1015.4 ms\* |
 
 \* Only over the runs that converged. Convergence times mostly come from timing parameters I
 picked: the 100 ms bake between steps, the baselines' 10%-every-20-ms waves, and the 200 ms
 canary bake. They aren't a speed comparison. The baselines also read for longer (non-converged
 runs keep going until 15 s), so their read totals are bigger. That's why I also give the
 per-run median.
+
+![Time to converge after rollout start and after the last fault, pinned vs rolling vs canary](docs/img/convergence.png)
 
 In the pinned runs the faults did happen and the protocol worked around them:
 - 143 prepares were aborted and retried
@@ -158,10 +221,6 @@ In the pinned runs the faults did happen and the protocol worked around them:
 There were 4 reads that hit a rotted config before repair. Each one got a `CORRUPT` error
 instead of being served wrong.
 
-On clean runs with no faults (500 nodes, 20 seeds), pinned had 0/443 mixed reads. Rolling push
-had 528/1,137 (46%) and canary had 724/1,954 (37%). That gap is just what a rolling deploy *is*,
-not a fault.
-
 ### Wider search: 50 nodes, 2,000 schedules per fault profile, correct protocol
 
 | profile | runs | violations | runs with leader change | stale decides fenced |
@@ -170,37 +229,13 @@ not a fault.
 | `lease` (suspends aimed at prepare, slow nodes) | 2000 | 0 | 1069 | 139 |
 | `reorder` (delay spikes, duplicates, loss) | 2000 | 0 | 524 | 61 |
 
-### Real sockets: 50 node agents on localhost TCP
-
-The same protocol classes as above, but here each node, coordinator, router and the store is an
-asyncio TCP server on 127.0.0.1. Messages are length-prefixed JSON frames, and node state lives
-in JSON files that a restarted node reloads. These are real wall-clock milliseconds, with 3x the
-simulator's timeouts. Fault schedules are the same seeds as in the simulator.
-
-| | pinned, clean (seeds 0-4) | pinned, faults (seeds 0-39) | rolling push, faults (seeds 0-14) |
-|---|---|---|---|
-| runs with any invariant violation | 0 / 5 | **0 / 40** | 15 / 15 |
-| client reads that saw mixed configs | 0 / 286 | **0 / 4,602** | 546 / 2,489 (per-run median 20.5%) |
-| converge after rollout start, p50 / p95 / max | 652 / 656 / 656 ms | 1251 / 1815 / 1890 ms | 1307 / 1785 / 1847 ms (14 of 15 converged) |
-| converge after last fault ends, p50 / max | n/a | 116 / 695 ms | 307 / 888 ms |
-| wall time per run, median | 0.9 s | 1.5 s | 1.5 s |
-
-In the 40 pinned fault runs on real sockets:
-- 8 prepares were aborted and retried
-- the leader changed in 8 runs
-- 66 corrupted manifests were rejected
-- 12 bit-rot repairs happened, median 50.9 ms and max 352 ms
-- 10 reads were refused as `CORRUPT` instead of being served wrong
-- 0 handler exceptions
-
-No stale decide was fenced in this smaller real-socket sample; that only showed up in the
-simulator runs.
-
 ### Did the checker actually catch anything? (mutation testing)
 
 Zero violations is only reassuring if the checker can catch a real bug. So I added flags that
 each switch off **one** safety mechanism. I ran each one on 900 schedules (20 nodes; 300 each
 from the default, lease and reorder profiles) and shrank the first failure:
+
+![Schedules caught per mutation, split by fault profile](docs/img/mutation_detection.png)
 
 | mutation (one layer removed) | caught | invariant | shrunk repro |
 |---|---|---|---|
@@ -213,7 +248,55 @@ from the default, lease and reorder profiles) and shrank the first failure:
 
 Each shrunk repro is saved in `repros/` and replays with `python3 -m fleetcc replay repros/<name>.json`.
 
-## What surprised us / bugs the chaos tests found in our own code
+**The hand-written stale-coordinator scenario.** Both coordinators are suspended at t=8 ms for
+600 ms and one node is slow. Over 8 seeds:
+
+| | runs with a violation | stale decides fenced | stranded-epoch violations |
+|---|---|---|---|
+| fencing on | 0 / 8 | 4 | 0 |
+| fencing off (`no_fencing`) | 3 / 8 | 0 | 48 |
+
+### Real sockets: 50 node agents on localhost TCP
+
+The same protocol classes as above, but here each node, coordinator, router and the store is an
+asyncio TCP server on 127.0.0.1. Messages are length-prefixed JSON frames, and node state lives
+in JSON files that a restarted node reloads. These are real wall-clock milliseconds, with 3x the
+simulator's timeouts. Fault schedules are the same seeds as in the simulator.
+
+| | pinned, clean (seeds 0..4) | pinned, faults (seeds 0..39) | rolling push, faults (seeds 0..14) |
+|---|---|---|---|
+| runs with any invariant violation | 0 / 5 | **0 / 40** | 15 / 15 |
+| client reads that saw mixed configs | 0 / 286 | **0 / 4,602** | 546 / 2,489 (per-run median 20.5%) |
+| converge after rollout start, p50 / p95 / max | 651.8 / 655.5 / 656.1 ms | 1250.9 / 1815.3 / 1890.3 ms | 1306.7 / 1785.2 / 1846.9 ms (14 of 15 converged) |
+| converge after last fault ends, p50 / max | n/a | 115.6 / 694.9 ms | 306.5 / 888.1 ms |
+| wall time per run, median | 0.9 s | 1.5 s | 1.5 s |
+
+In the 40 pinned fault runs on real sockets:
+- 8 prepares were aborted and retried
+- the leader changed in 8 runs
+- 66 corrupted manifests were rejected
+- 12 bit-rot repairs happened, median 50.9 ms and max 352.2 ms
+- 10 reads were refused as `CORRUPT` instead of being served wrong
+- 0 handler exceptions
+
+No stale decide was fenced in this smaller real-socket sample; that only showed up in the
+simulator runs.
+
+### What the numbers do NOT show
+
+- **Not a speed comparison.** Convergence times are mostly my bake / wave / poll settings.
+  Pinning costs a full prepare round and keeps old epochs on disk.
+- **"0 mixed reads" is not "every read was fully answered".** A read counts as mixed only if the
+  legs that *did* answer disagree. Under faults, 27,000 individual fan-out legs timed out in the
+  pinned 500-node runs (27,726 for rolling, 28,924 for canary), mostly from partitions and
+  crashes. Pinning also trades availability for safety: one unreachable node blocks the commit.
+- **The fencing result is narrow.** Random search caught the missing fence 1 time in 900; the
+  hand-written scenario is what really demonstrates it.
+- **`skip_hash_check` scored 0.** That's a real gap in what invariants can see (see below), not
+  proof the hash check is useless.
+- **The fault model is mine.** Different fault ranges would change every rate here.
+
+## What surprised me / bugs the chaos tests found in my own code
 
 - **The protocol never failed, and that was the suspicious part.** The very first batch of
   random schedules came back with zero violations. That's not evidence of anything until you
@@ -227,12 +310,9 @@ Each shrunk repro is saved in `repros/` and replays with `python3 -m fleetcc rep
 - **Even then, random search almost never lines it up.** `no_fencing` was caught in **1 of
   900** runs, and only in the targeted `lease` profile. It takes a stale coordinator collecting
   its last PREPARED acks right before a freeze, *and* the new leader still mid-prepare when the
-  stale commit lands. So I also wrote that interleaving by hand: both coordinators are suspended
-  at t=8 ms for 600 ms and one node is slow. Over 8 seeds, fencing on gave 0 violations (4 stale
-  decides were fenced). Fencing off gave violations in 3 of 8 runs (48 stranded reads). In the
-  shrunk repro you can see the store accept `commit(epoch 3)` from token 1 at t=976 ms, while
-  token 2's leader is preparing epoch 4. The router flips to epoch 3, which a node had already
-  dropped.
+  stale commit lands. So I also wrote that interleaving by hand (table above). In the shrunk
+  repro you can see the store accept `commit(epoch 3)` from token 1 at t=976 ms, while token 2's
+  leader is preparing epoch 4. The router flips to epoch 3, which a node had already dropped.
 - **Defense in depth hides bugs from invariant checks.** `skip_hash_check` was caught 0 times.
   A corrupted manifest still gets staged. But the node re-hashes before serving, so it refuses
   with `CORRUPT`, and polling repairs the config. The bug only shows up as more `CORRUPT` errors
@@ -252,22 +332,40 @@ Each shrunk repro is saved in `repros/` and replays with `python3 -m fleetcc rep
 - A small reporting bug: the summary said the baselines made 0 commits, because it was
   counting the store's bootstrap commit.
 
-## Run it
+## Run it yourself
 
-Python 3.10+, standard library only.
+**Prerequisites:** Python 3.10+. The protocol, simulator, tests and evaluation use the standard
+library only. Regenerating the README charts additionally needs matplotlib.
+
+**Setup:**
 
 ```sh
-python3 -m unittest discover -s tests -t . -v   # 31 tests, ~3 s
-python3 run_eval.py                              # everything above, ~3.5 min on 8 cores
-python3 run_eval.py --quick                      # smaller smoke version
+git clone https://github.com/nikhils23j/fleet-configuration-consistency.git
+cd fleet-configuration-consistency
 ```
 
-## Break it yourself
+**Quickstart** (a few seconds each):
 
 ```sh
-# one seeded schedule, print the timeline
+# one seeded schedule on 50 nodes, print the timeline
 python3 -m fleetcc sim --seed 42 --nodes 50 --timeline
 
+# replay one of the saved shrunk failures
+python3 -m fleetcc replay repros/commit_on_majority.json
+```
+
+**Full evaluation** (rewrites `results.json`; took 202.3 s on an 8-core M2):
+
+```sh
+python3 run_eval.py
+python3 run_eval.py --quick --output quick-results.json   # smaller smoke version; without
+                                                          # --output it overwrites results.json
+python3 scripts/make_figures.py                           # redraw docs/img/*.png from results.json
+```
+
+### Break it yourself
+
+```sh
 # switch off a safety layer, search 300 schedules, shrink the first failure, replay it
 python3 -m fleetcc chaos --runs 300 --nodes 20 --mutation commit_on_majority --shrink --out repro.json
 python3 -m fleetcc replay repro.json
@@ -286,7 +384,44 @@ python3 -m fleetcc net --seed 3 --nodes 50
 Mutations: `no_fencing`, `commit_on_majority`, `skip_hash_check`, `no_epoch_monotonic`,
 `no_read_verify`, `no_anti_entropy`. Profiles: `default`, `lease`, `reorder`.
 
-## What this isn't
+## Tests
+
+```sh
+python3 -m unittest discover -s tests -t . -v   # 31 tests, ~3 s
+```
+
+| file | what it covers |
+|---|---|
+| `tests/test_protocol.py` | canonical hashing; lease tokens increase and stale decides are fenced; decisions are write-once and monotonic; hash mismatch and stale tokens rejected; staged epochs serve pinned reads; activation never goes backwards; corrupted configs are not served |
+| `tests/test_checker.py` | each invariant (I1 to I4) fires on a hand-made bad history and stays quiet on a clean one |
+| `tests/test_sim.py` | clean rollout + rollback; same seed gives the same history, also across `PYTHONHASHSEED`; the naive baseline shows mixed reads; crash mid-prepare aborts then commits; bit rot repaired only with anti-entropy; corruption in transit rejected and retried |
+| `tests/test_chaos.py` | random schedules hold all invariants; fencing blocks the stale coordinator; the majority-commit bug is caught and shrunk; ddmin finds a minimal subset |
+| `tests/test_net.py` | a clean rollout over real localhost TCP; a node crash/restart reloads its state from disk |
+
+## Project layout
+
+```
+.
+├── fleetcc/
+│   ├── protocol.py     Store, Node, Router, Coordinator (I/O-free state machines)
+│   ├── baseline.py     rolling and canary push, for comparison
+│   ├── sim.py          deterministic discrete-event simulator
+│   ├── net.py          the same actors as asyncio TCP servers on 127.0.0.1
+│   ├── faults.py       seeded fault schedules + per-message network model
+│   ├── checker.py      invariant checker over the recorded history
+│   ├── chaos.py        parallel schedule runner + delta-debugging shrinker
+│   └── __main__.py     CLI: sim / chaos / replay / net
+├── tests/              31 unit and integration tests
+├── repros/             shrunk failing schedules, one per caught mutation
+├── scripts/
+│   └── make_figures.py draws docs/img/*.png from results.json
+├── docs/img/           README charts
+├── run_eval.py         full evaluation -> results.json
+├── results.json        the numbers in this README
+└── INTERVIEW_NOTES.md
+```
+
+## What this isn't / limits
 
 - **Not a consensus system.** The store (leases, epochs, decisions) is a single in-memory actor
   that I *assume* is linearizable and never crashes. In real life that's etcd, ZooKeeper or a
@@ -307,3 +442,11 @@ Mutations: `no_fencing`, `commit_on_majority`, `skip_hash_check`, `no_epoch_mono
   and it trades availability for safety: one unreachable node blocks the commit.
 - No real traffic, no production use, no real configs. The manifest is a toy dict
   (`max_conns`, `timeout_ms`, `feature_x`).
+
+## More
+
+- [INTERVIEW_NOTES.md](INTERVIEW_NOTES.md): how it works, the design decisions and why, and
+  the key results, written up for talking through the project.
+
+I built this with AI pair-programming help (Claude). I wrote and reviewed the design, the tests
+and every number here, and re-ran everything before writing it down.
