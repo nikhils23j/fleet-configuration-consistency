@@ -417,8 +417,7 @@ python3 -m unittest discover -s tests -t . -v   # 31 tests, ~3 s
 │   └── make_figures.py draws docs/img/*.png from results.json
 ├── docs/img/           README charts
 ├── run_eval.py         full evaluation -> results.json
-├── results.json        the numbers in this README
-└── INTERVIEW_NOTES.md
+└── results.json        the numbers in this README
 ```
 
 ## What this isn't / limits
@@ -443,10 +442,4 @@ python3 -m unittest discover -s tests -t . -v   # 31 tests, ~3 s
 - No real traffic, no production use, no real configs. The manifest is a toy dict
   (`max_conns`, `timeout_ms`, `feature_x`).
 
-## More
-
-- [INTERVIEW_NOTES.md](INTERVIEW_NOTES.md): how it works, the design decisions and why, and
-  the key results, written up for talking through the project.
-
-I built this with AI pair-programming help (Claude). I wrote and reviewed the design, the tests
-and every number here, and re-ran everything before writing it down.
+I reviewed the design, the tests, and every number here, and re-ran everything before writing it down.
