@@ -1,25 +1,1024 @@
 {
-  "environment": {
-    "python": "3.10.8",
-    "system": "macOS-27.2-arm64-arm-64bit"
+ "environment": {
+  "python": "3.10.8",
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "machine": "arm64",
+  "cpu_count": 8
+ },
+ "command": "python3 run_eval.py",
+ "params_sim": {
+  "lease_ms": 300.0,
+  "renew_ms": 80.0,
+  "lease_margin_ms": 30.0,
+  "prepare_timeout_ms": 150.0,
+  "retry_ms": 40.0,
+  "bake_ms": 100.0,
+  "abort_backoff_ms": 120.0,
+  "poll_ms": 200.0,
+  "router_poll_ms": 20.0,
+  "read_every_ms": 10.0,
+  "read_fanout": 5,
+  "read_timeout_ms": 100.0,
+  "keep_committed": 3,
+  "canary_fraction": 0.05,
+  "canary_bake_ms": 200.0,
+  "wave_fraction": 0.1,
+  "wave_ms": 20.0
+ },
+ "notes": "All times are virtual milliseconds in the simulator and wall-clock milliseconds in real-socket mode. Each sim run rolls out v2 and then rolls back (new epoch), while the router issues a 5-node fan-out read every 10 ms.",
+ "determinism": {
+  "seeds": 20,
+  "identical_histories": 20
+ },
+ "clean": {
+  "nodes": 500,
+  "seeds": "0..19",
+  "pinned": {
+   "runs": 20,
+   "runs_with_violation": 0,
+   "violations_by_invariant_runs": {},
+   "reads": 443,
+   "mixed_reads": 0,
+   "mixed_read_fraction": 0.0,
+   "runs_with_mixed_read": 0,
+   "per_run_mixed_fraction": {
+    "n": 20,
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+   },
+   "read_errors": {},
+   "read_timeouts": 0,
+   "converged_runs": 20,
+   "converge_ms": {
+    "n": 20,
+    "min": 221.8,
+    "p50": 223.9,
+    "p95": 228.1,
+    "p99": 228.7,
+    "max": 228.8,
+    "mean": 224.6
+   },
+   "converge_after_last_fault_ms": {
+    "n": 20,
+    "min": 221.8,
+    "p50": 223.9,
+    "p95": 228.1,
+    "p99": 228.7,
+    "max": 228.8,
+    "mean": 224.6
+   },
+   "aborted_prepares": 0,
+   "runs_with_leader_change": 0,
+   "fenced_stale_decides": 0,
+   "hash_rejects": 0,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {}
   },
-  "workload": {
-    "logical_nodes": 500,
-    "fault_runs": 100,
-    "drift_trials": 20
+  "naive": {
+   "runs": 20,
+   "runs_with_violation": 20,
+   "violations_by_invariant_runs": {
+    "no_mixed_read": 20
+   },
+   "reads": 1137,
+   "mixed_reads": 528,
+   "mixed_read_fraction": 0.4644,
+   "runs_with_mixed_read": 20,
+   "per_run_mixed_fraction": {
+    "n": 20,
+    "min": 38.6,
+    "p50": 46.9,
+    "p95": 55.4,
+    "p99": 56.8,
+    "max": 57.1,
+    "mean": 46.5
+   },
+   "read_errors": {},
+   "read_timeouts": 0,
+   "converged_runs": 20,
+   "converge_ms": {
+    "n": 20,
+    "min": 575.0,
+    "p50": 575.0,
+    "p95": 575.0,
+    "p99": 575.0,
+    "max": 575.0,
+    "mean": 575.0
+   },
+   "converge_after_last_fault_ms": {
+    "n": 20,
+    "min": 575.0,
+    "p50": 575.0,
+    "p95": 575.0,
+    "p99": 575.0,
+    "max": 575.0,
+    "mean": 575.0
+   },
+   "aborted_prepares": 0,
+   "runs_with_leader_change": 0,
+   "fenced_stale_decides": 0,
+   "hash_rejects": 0,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {}
   },
-  "fault_modes": {
-    "reject": 34,
-    "corrupt": 33,
-    "timeout": 33
-  },
-  "aborted_fault_runs": 100,
-  "successful_clean_rollout": true,
-  "mixed_served_version_samples": 0,
-  "naive_sequential_rollout_mixed_samples": 499,
-  "drift_detected_trials": 20,
-  "drift_detection_ms": {
-    "max": 14.85,
-    "median": 11.74
+  "canary": {
+   "runs": 20,
+   "runs_with_violation": 20,
+   "violations_by_invariant_runs": {
+    "no_mixed_read": 20
+   },
+   "reads": 1954,
+   "mixed_reads": 724,
+   "mixed_read_fraction": 0.3705,
+   "runs_with_mixed_read": 20,
+   "per_run_mixed_fraction": {
+    "n": 20,
+    "min": 29.6,
+    "p50": 37.8,
+    "p95": 41.4,
+    "p99": 43.4,
+    "max": 43.9,
+    "mean": 37.1
+   },
+   "read_errors": {},
+   "read_timeouts": 0,
+   "converged_runs": 20,
+   "converge_ms": {
+    "n": 20,
+    "min": 985.0,
+    "p50": 985.0,
+    "p95": 985.0,
+    "p99": 985.0,
+    "max": 985.0,
+    "mean": 985.0
+   },
+   "converge_after_last_fault_ms": {
+    "n": 20,
+    "min": 985.0,
+    "p50": 985.0,
+    "p95": 985.0,
+    "p99": 985.0,
+    "max": 985.0,
+    "mean": 985.0
+   },
+   "aborted_prepares": 0,
+   "runs_with_leader_change": 0,
+   "fenced_stale_decides": 0,
+   "hash_rejects": 0,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {}
   }
+ },
+ "chaos_main": {
+  "nodes": 500,
+  "profile": "default",
+  "seeds": "0..499",
+  "pinned": {
+   "runs": 500,
+   "runs_with_violation": 0,
+   "violations_by_invariant_runs": {},
+   "reads": 55015,
+   "mixed_reads": 0,
+   "mixed_read_fraction": 0.0,
+   "runs_with_mixed_read": 0,
+   "per_run_mixed_fraction": {
+    "n": 500,
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+   },
+   "read_errors": {
+    "CORRUPT": 4
+   },
+   "read_timeouts": 27000,
+   "converged_runs": 500,
+   "converge_ms": {
+    "n": 500,
+    "min": 223.7,
+    "p50": 1114.4,
+    "p95": 1601.0,
+    "p99": 1723.0,
+    "max": 1819.5,
+    "mean": 1122.2
+   },
+   "converge_after_last_fault_ms": {
+    "n": 500,
+    "min": 0.0,
+    "p50": 2.8,
+    "p95": 146.7,
+    "p99": 223.3,
+    "max": 354.9,
+    "mean": 20.2
+   },
+   "aborted_prepares": 143,
+   "runs_with_leader_change": 167,
+   "fenced_stale_decides": 7,
+   "hash_rejects": 3012,
+   "drift_repair_ms": {
+    "n": 70,
+    "min": 0.4,
+    "p50": 88.9,
+    "p95": 187.8,
+    "p99": 257.0,
+    "max": 265.5,
+    "mean": 95.8
+   },
+   "fault_kind_runs": {
+    "crash": 291,
+    "suspend": 139,
+    "partition": 152,
+    "clock_jump": 92,
+    "corrupt": 79,
+    "lossy": 231,
+    "slow": 81,
+    "pause": 156,
+    "bitrot": 70
+   }
+  },
+  "naive": {
+   "runs": 500,
+   "runs_with_violation": 500,
+   "violations_by_invariant_runs": {
+    "no_mixed_read": 500,
+    "convergence": 38
+   },
+   "reads": 111419,
+   "mixed_reads": 17856,
+   "mixed_read_fraction": 0.1603,
+   "runs_with_mixed_read": 500,
+   "per_run_mixed_fraction": {
+    "n": 500,
+    "min": 2.1,
+    "p50": 23.7,
+    "p95": 64.5,
+    "p99": 71.2,
+    "max": 82.1,
+    "mean": 28.4
+   },
+   "read_errors": {},
+   "read_timeouts": 27726,
+   "converged_runs": 462,
+   "converge_ms": {
+    "n": 462,
+    "min": 575.0,
+    "p50": 1217.5,
+    "p95": 1650.0,
+    "p99": 1818.9,
+    "max": 1890.0,
+    "mean": 1202.9
+   },
+   "converge_after_last_fault_ms": {
+    "n": 462,
+    "min": 0.0,
+    "p50": 4.4,
+    "p95": 415.6,
+    "p99": 554.5,
+    "max": 574.5,
+    "mean": 99.2
+   },
+   "aborted_prepares": 0,
+   "runs_with_leader_change": 0,
+   "fenced_stale_decides": 0,
+   "hash_rejects": 5753,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {
+    "crash": 291,
+    "suspend": 139,
+    "partition": 152,
+    "clock_jump": 92,
+    "corrupt": 79,
+    "lossy": 231,
+    "slow": 81,
+    "pause": 156,
+    "bitrot": 70
+   }
+  },
+  "canary": {
+   "runs": 500,
+   "runs_with_violation": 500,
+   "violations_by_invariant_runs": {
+    "no_mixed_read": 500,
+    "convergence": 14
+   },
+   "reads": 91665,
+   "mixed_reads": 22152,
+   "mixed_read_fraction": 0.2417,
+   "runs_with_mixed_read": 500,
+   "per_run_mixed_fraction": {
+    "n": 500,
+    "min": 2.6,
+    "p50": 28.0,
+    "p95": 52.7,
+    "p99": 62.6,
+    "max": 67.3,
+    "mean": 29.6
+   },
+   "read_errors": {},
+   "read_timeouts": 28924,
+   "converged_runs": 486,
+   "converge_ms": {
+    "n": 486,
+    "min": 985.0,
+    "p50": 1480.0,
+    "p95": 1960.0,
+    "p99": 2155.0,
+    "max": 2475.0,
+    "mean": 1468.1
+   },
+   "converge_after_last_fault_ms": {
+    "n": 486,
+    "min": 0.2,
+    "p50": 331.9,
+    "p95": 846.8,
+    "p99": 984.8,
+    "max": 1015.4,
+    "mean": 362.5
+   },
+   "aborted_prepares": 0,
+   "runs_with_leader_change": 0,
+   "fenced_stale_decides": 0,
+   "hash_rejects": 6777,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {
+    "crash": 291,
+    "suspend": 139,
+    "partition": 152,
+    "clock_jump": 92,
+    "corrupt": 79,
+    "lossy": 231,
+    "slow": 81,
+    "pause": 156,
+    "bitrot": 70
+   }
+  }
+ },
+ "wide_search": {
+  "nodes": 50,
+  "seeds_per_profile": "0..1999",
+  "default": {
+   "runs": 2000,
+   "runs_with_violation": 0,
+   "violations_by_invariant_runs": {},
+   "reads": 215374,
+   "mixed_reads": 0,
+   "mixed_read_fraction": 0.0,
+   "runs_with_mixed_read": 0,
+   "per_run_mixed_fraction": {
+    "n": 2000,
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+   },
+   "read_errors": {
+    "CORRUPT": 182
+   },
+   "read_timeouts": 98256,
+   "converged_runs": 2000,
+   "converge_ms": {
+    "n": 2000,
+    "min": 218.9,
+    "p50": 1114.7,
+    "p95": 1608.2,
+    "p99": 1744.3,
+    "max": 1936.9,
+    "mean": 1099.7
+   },
+   "converge_after_last_fault_ms": {
+    "n": 2000,
+    "min": 0.0,
+    "p50": 2.9,
+    "p95": 144.4,
+    "p99": 252.9,
+    "max": 704.7,
+    "mean": 21.4
+   },
+   "aborted_prepares": 613,
+   "runs_with_leader_change": 666,
+   "fenced_stale_decides": 15,
+   "hash_rejects": 1462,
+   "drift_repair_ms": {
+    "n": 318,
+    "min": 0.0,
+    "p50": 43.0,
+    "p95": 182.8,
+    "p99": 324.9,
+    "max": 554.5,
+    "mean": 66.2
+   },
+   "fault_kind_runs": {
+    "crash": 1145,
+    "partition": 593,
+    "corrupt": 314,
+    "lossy": 872,
+    "clock_jump": 344,
+    "slow": 329,
+    "bitrot": 312,
+    "suspend": 490,
+    "pause": 640
+   }
+  },
+  "lease": {
+   "runs": 2000,
+   "runs_with_violation": 0,
+   "violations_by_invariant_runs": {},
+   "reads": 230151,
+   "mixed_reads": 0,
+   "mixed_read_fraction": 0.0,
+   "runs_with_mixed_read": 0,
+   "per_run_mixed_fraction": {
+    "n": 2000,
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+   },
+   "read_errors": {},
+   "read_timeouts": 41885,
+   "converged_runs": 2000,
+   "converge_ms": {
+    "n": 2000,
+    "min": 213.5,
+    "p50": 1143.6,
+    "p95": 1722.8,
+    "p99": 1865.6,
+    "max": 2091.2,
+    "mean": 1131.5
+   },
+   "converge_after_last_fault_ms": {
+    "n": 2000,
+    "min": 0.0,
+    "p50": 2.9,
+    "p95": 158.6,
+    "p99": 267.8,
+    "max": 372.8,
+    "mean": 23.2
+   },
+   "aborted_prepares": 611,
+   "runs_with_leader_change": 1069,
+   "fenced_stale_decides": 139,
+   "hash_rejects": 0,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {
+    "lossy": 559,
+    "slow": 1265,
+    "suspend": 1523,
+    "crash": 594
+   }
+  },
+  "reorder": {
+   "runs": 2000,
+   "runs_with_violation": 0,
+   "violations_by_invariant_runs": {},
+   "reads": 213740,
+   "mixed_reads": 0,
+   "mixed_read_fraction": 0.0,
+   "runs_with_mixed_read": 0,
+   "per_run_mixed_fraction": {
+    "n": 2000,
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+   },
+   "read_errors": {},
+   "read_timeouts": 253063,
+   "converged_runs": 2000,
+   "converge_ms": {
+    "n": 2000,
+    "min": 223.2,
+    "p50": 1122.1,
+    "p95": 1671.3,
+    "p99": 1827.6,
+    "max": 2035.1,
+    "mean": 1121.2
+   },
+   "converge_after_last_fault_ms": {
+    "n": 2000,
+    "min": 0.0,
+    "p50": 2.9,
+    "p95": 195.2,
+    "p99": 436.9,
+    "max": 789.6,
+    "mean": 29.5
+   },
+   "aborted_prepares": 605,
+   "runs_with_leader_change": 524,
+   "fenced_stale_decides": 61,
+   "hash_rejects": 0,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {
+    "lossy": 1864,
+    "crash": 718,
+    "slow": 736
+   }
+  }
+ },
+ "mutations": {
+  "no_fencing": {
+   "what": "store accepts alloc/decide from a stale lease token",
+   "nodes": 20,
+   "seeds_per_profile": "0..299",
+   "default": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {
+     "CORRUPT": 39
+    }
+   },
+   "lease": {
+    "runs": 300,
+    "caught": 1,
+    "invariants": {
+     "no_stranded_epoch": 1
+    },
+    "read_errors": {
+     "EPOCH_MISSING": 15
+    }
+   },
+   "reorder": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {}
+   },
+   "caught_total": 1,
+   "runs_total": 900,
+   "shrunk": {
+    "invariant": "no_stranded_epoch",
+    "faults_before": 3,
+    "faults_after": 3,
+    "nodes_before": 20,
+    "nodes_after": 2,
+    "sim_runs": 12
+   },
+   "repro": "python3 -m fleetcc replay repros/no_fencing.json"
+  },
+  "commit_on_majority": {
+   "what": "coordinator commits once a majority (not all) nodes prepared",
+   "nodes": 20,
+   "seeds_per_profile": "0..299",
+   "default": {
+    "runs": 300,
+    "caught": 37,
+    "invariants": {
+     "no_stranded_epoch": 37
+    },
+    "read_errors": {
+     "CORRUPT": 39,
+     "EPOCH_MISSING": 73
+    }
+   },
+   "lease": {
+    "runs": 300,
+    "caught": 12,
+    "invariants": {
+     "no_stranded_epoch": 12
+    },
+    "read_errors": {
+     "EPOCH_MISSING": 21
+    }
+   },
+   "reorder": {
+    "runs": 300,
+    "caught": 37,
+    "invariants": {
+     "no_stranded_epoch": 37
+    },
+    "read_errors": {
+     "EPOCH_MISSING": 58
+    }
+   },
+   "caught_total": 86,
+   "runs_total": 900,
+   "shrunk": {
+    "invariant": "no_stranded_epoch",
+    "faults_before": 4,
+    "faults_after": 1,
+    "nodes_before": 20,
+    "nodes_after": 3,
+    "sim_runs": 9
+   },
+   "repro": "python3 -m fleetcc replay repros/commit_on_majority.json"
+  },
+  "skip_hash_check": {
+   "what": "node stages a manifest without checking its SHA-256",
+   "nodes": 20,
+   "seeds_per_profile": "0..299",
+   "default": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {
+     "CORRUPT": 72
+    }
+   },
+   "lease": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {}
+   },
+   "reorder": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {}
+   },
+   "caught_total": 0,
+   "runs_total": 900
+  },
+  "no_epoch_monotonic": {
+   "what": "node activates a COMMIT even if the epoch is older than its active one",
+   "nodes": 20,
+   "seeds_per_profile": "0..299",
+   "default": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {
+     "CORRUPT": 39
+    }
+   },
+   "lease": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {}
+   },
+   "reorder": {
+    "runs": 300,
+    "caught": 5,
+    "invariants": {
+     "no_resurrection": 5
+    },
+    "read_errors": {}
+   },
+   "caught_total": 5,
+   "runs_total": 900,
+   "shrunk": {
+    "invariant": "no_resurrection",
+    "faults_before": 5,
+    "faults_after": 1,
+    "nodes_before": 20,
+    "nodes_after": 2,
+    "sim_runs": 14
+   },
+   "repro": "python3 -m fleetcc replay repros/no_epoch_monotonic.json"
+  },
+  "no_read_verify": {
+   "what": "node serves reads without re-hashing the stored config",
+   "nodes": 20,
+   "seeds_per_profile": "0..299",
+   "default": {
+    "runs": 300,
+    "caught": 39,
+    "invariants": {
+     "no_mixed_read": 39
+    },
+    "read_errors": {}
+   },
+   "lease": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {}
+   },
+   "reorder": {
+    "runs": 300,
+    "caught": 0,
+    "invariants": {},
+    "read_errors": {}
+   },
+   "caught_total": 39,
+   "runs_total": 900,
+   "shrunk": {
+    "invariant": "no_mixed_read",
+    "faults_before": 4,
+    "faults_after": 1,
+    "nodes_before": 20,
+    "nodes_after": 2,
+    "sim_runs": 4
+   },
+   "repro": "python3 -m fleetcc replay repros/no_read_verify.json"
+  },
+  "no_anti_entropy": {
+   "what": "nodes never poll the store (no catch-up, no drift repair)",
+   "nodes": 20,
+   "seeds_per_profile": "0..299",
+   "default": {
+    "runs": 300,
+    "caught": 41,
+    "invariants": {
+     "convergence": 41
+    },
+    "read_errors": {
+     "CORRUPT": 7320
+    }
+   },
+   "lease": {
+    "runs": 300,
+    "caught": 1,
+    "invariants": {
+     "convergence": 1
+    },
+    "read_errors": {}
+   },
+   "reorder": {
+    "runs": 300,
+    "caught": 7,
+    "invariants": {
+     "convergence": 7
+    },
+    "read_errors": {}
+   },
+   "caught_total": 49,
+   "runs_total": 900,
+   "shrunk": {
+    "invariant": "convergence",
+    "faults_before": 4,
+    "faults_after": 1,
+    "nodes_before": 20,
+    "nodes_after": 2,
+    "sim_runs": 4
+   },
+   "repro": "python3 -m fleetcc replay repros/no_anti_entropy.json"
+  }
+ },
+ "stale_coordinator_scenario": {
+  "fencing_on": {
+   "seeds": "0..7",
+   "runs_with_violation": 0,
+   "fenced_stale_decides": 4,
+   "violations": {}
+  },
+  "no_fencing": {
+   "seeds": "0..7",
+   "runs_with_violation": 3,
+   "fenced_stale_decides": 0,
+   "violations": {
+    "no_stranded_epoch": 48
+   }
+  },
+  "faults": [
+   {
+    "kind": "suspend",
+    "actor": "coord",
+    "at": 8,
+    "dur": 600
+   },
+   {
+    "kind": "suspend",
+    "actor": "coordb",
+    "at": 8,
+    "dur": 600
+   },
+   {
+    "kind": "slow",
+    "actor": "n0",
+    "start": 250,
+    "end": 1200,
+    "extra": 200
+   }
+  ]
+ },
+ "real_sockets": {
+  "nodes": 50,
+  "params_scale": 3.0,
+  "params": {
+   "lease_ms": 900.0,
+   "renew_ms": 240.0,
+   "lease_margin_ms": 90.0,
+   "prepare_timeout_ms": 450.0,
+   "retry_ms": 120.0,
+   "bake_ms": 300.0,
+   "abort_backoff_ms": 360.0,
+   "poll_ms": 600.0,
+   "router_poll_ms": 60.0,
+   "read_every_ms": 10.0,
+   "read_fanout": 5,
+   "read_timeout_ms": 300.0,
+   "keep_committed": 3,
+   "canary_fraction": 0.05,
+   "canary_bake_ms": 200.0,
+   "wave_fraction": 0.1,
+   "wave_ms": 20.0
+  },
+  "pinned_clean": {
+   "runs": 5,
+   "runs_with_violation": 0,
+   "violations_by_invariant_runs": {},
+   "reads": 286,
+   "mixed_reads": 0,
+   "mixed_read_fraction": 0.0,
+   "runs_with_mixed_read": 0,
+   "per_run_mixed_fraction": {
+    "n": 5,
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+   },
+   "read_errors": {},
+   "read_timeouts": 0,
+   "converged_runs": 5,
+   "converge_ms": {
+    "n": 5,
+    "min": 647.4,
+    "p50": 651.8,
+    "p95": 655.5,
+    "p99": 655.9,
+    "max": 656.1,
+    "mean": 651.8
+   },
+   "converge_after_last_fault_ms": {
+    "n": 5,
+    "min": 647.4,
+    "p50": 651.8,
+    "p95": 655.5,
+    "p99": 655.9,
+    "max": 656.1,
+    "mean": 651.8
+   },
+   "aborted_prepares": 0,
+   "runs_with_leader_change": 0,
+   "fenced_stale_decides": 0,
+   "hash_rejects": 0,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {},
+   "seeds": "0..4",
+   "wall_s_per_run": {
+    "n": 5,
+    "min": 0.9,
+    "p50": 0.9,
+    "p95": 1.0,
+    "p99": 1.0,
+    "max": 1.0,
+    "mean": 0.9
+   },
+   "handler_exceptions": 0
+  },
+  "pinned_chaos": {
+   "runs": 40,
+   "runs_with_violation": 0,
+   "violations_by_invariant_runs": {},
+   "reads": 4602,
+   "mixed_reads": 0,
+   "mixed_read_fraction": 0.0,
+   "runs_with_mixed_read": 0,
+   "per_run_mixed_fraction": {
+    "n": 40,
+    "min": 0.0,
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+   },
+   "read_errors": {
+    "CORRUPT": 10
+   },
+   "read_timeouts": 1537,
+   "converged_runs": 40,
+   "converge_ms": {
+    "n": 40,
+    "min": 631.7,
+    "p50": 1250.9,
+    "p95": 1815.3,
+    "p99": 1875.1,
+    "max": 1890.3,
+    "mean": 1293.1
+   },
+   "converge_after_last_fault_ms": {
+    "n": 40,
+    "min": 0.4,
+    "p50": 115.6,
+    "p95": 678.3,
+    "p99": 693.6,
+    "max": 694.9,
+    "mean": 196.1
+   },
+   "aborted_prepares": 8,
+   "runs_with_leader_change": 8,
+   "fenced_stale_decides": 0,
+   "hash_rejects": 66,
+   "drift_repair_ms": {
+    "n": 12,
+    "min": 6.9,
+    "p50": 50.9,
+    "p95": 271.5,
+    "p99": 336.1,
+    "max": 352.2,
+    "mean": 88.1
+   },
+   "fault_kind_runs": {
+    "crash": 25,
+    "partition": 16,
+    "corrupt": 8,
+    "lossy": 13,
+    "clock_jump": 7,
+    "slow": 7,
+    "bitrot": 13,
+    "suspend": 16,
+    "pause": 11
+   },
+   "seeds": "0..39",
+   "wall_s_per_run": {
+    "n": 40,
+    "min": 0.8,
+    "p50": 1.5,
+    "p95": 2.0,
+    "p99": 2.1,
+    "max": 2.1,
+    "mean": 1.5
+   },
+   "handler_exceptions": 0
+  },
+  "naive_chaos": {
+   "runs": 15,
+   "runs_with_violation": 15,
+   "violations_by_invariant_runs": {
+    "no_mixed_read": 15,
+    "convergence": 1
+   },
+   "reads": 2489,
+   "mixed_reads": 546,
+   "mixed_read_fraction": 0.2194,
+   "runs_with_mixed_read": 15,
+   "per_run_mixed_fraction": {
+    "n": 15,
+    "min": 9.4,
+    "p50": 20.5,
+    "p95": 39.7,
+    "p99": 49.2,
+    "max": 51.6,
+    "mean": 24.2
+   },
+   "read_errors": {},
+   "read_timeouts": 509,
+   "converged_runs": 14,
+   "converge_ms": {
+    "n": 14,
+    "min": 977.3,
+    "p50": 1306.7,
+    "p95": 1785.2,
+    "p99": 1834.5,
+    "max": 1846.9,
+    "mean": 1354.0
+   },
+   "converge_after_last_fault_ms": {
+    "n": 14,
+    "min": 0.7,
+    "p50": 306.5,
+    "p95": 853.0,
+    "p99": 881.1,
+    "max": 888.1,
+    "mean": 290.3
+   },
+   "aborted_prepares": 0,
+   "runs_with_leader_change": 0,
+   "fenced_stale_decides": 0,
+   "hash_rejects": 71,
+   "drift_repair_ms": null,
+   "fault_kind_runs": {
+    "crash": 7,
+    "partition": 6,
+    "corrupt": 4,
+    "lossy": 4,
+    "clock_jump": 2,
+    "slow": 3,
+    "bitrot": 2,
+    "suspend": 7,
+    "pause": 4
+   },
+   "seeds": "0..14",
+   "wall_s_per_run": {
+    "n": 15,
+    "min": 1.2,
+    "p50": 1.5,
+    "p95": 3.9,
+    "p99": 7.3,
+    "max": 8.2,
+    "mean": 2.0
+   },
+   "handler_exceptions": 0
+  }
+ },
+ "eval_wall_seconds": 202.3
 }

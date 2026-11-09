@@ -1,0 +1,40 @@
+{
+ "config": {
+  "n_nodes": 2,
+  "seed": 276,
+  "mode": "pinned",
+  "mutations": [
+   "no_fencing"
+  ],
+  "faults": [
+   {
+    "kind": "suspend",
+    "actor": "coord",
+    "at": 116.0,
+    "dur": 859.1
+   },
+   {
+    "kind": "slow",
+    "actor": "n0",
+    "start": 716.1,
+    "end": 994.0,
+    "extra": 138.1
+   },
+   {
+    "kind": "suspend",
+    "actor": "coordb",
+    "at": 8.9,
+    "dur": 889.9
+   }
+  ],
+  "max_ms": 8000.0
+ },
+ "shrink": {
+  "invariant": "no_stranded_epoch",
+  "faults_before": 3,
+  "faults_after": 3,
+  "nodes_before": 20,
+  "nodes_after": 2,
+  "sim_runs": 12
+ }
+}

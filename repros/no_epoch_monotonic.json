@@ -1,0 +1,29 @@
+{
+ "config": {
+  "n_nodes": 2,
+  "seed": 2,
+  "mode": "pinned",
+  "mutations": [
+   "no_epoch_monotonic"
+  ],
+  "faults": [
+   {
+    "kind": "lossy",
+    "start": 10.5,
+    "end": 126.2,
+    "drop": 0.0,
+    "dup": 0.0,
+    "delay_max": 128.2
+   }
+  ],
+  "max_ms": 8000.0
+ },
+ "shrink": {
+  "invariant": "no_resurrection",
+  "faults_before": 5,
+  "faults_after": 1,
+  "nodes_before": 20,
+  "nodes_after": 2,
+  "sim_runs": 14
+ }
+}
